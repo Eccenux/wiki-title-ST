@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Wiki-ST
 // @namespace    pl.enux.wiki
-// @version      2025-04-15.2
+// @version      2025-04-15.3
 // @description  Sprzątanie Tytułu. Usuwa m.in. dopisek po kresce z tytułów oraz skraca przestrzenie nazw.
 // @author       Nux
 // @match        https://pl.wikipedia.org/*
@@ -55,8 +55,14 @@
 		// action indicator init
 		let actionInd = '';
 		if (location.search.includes('action=edit')) {
-			title = title.replace(/^Ed[^]\S+ /, '');
 			actionInd = '✏️';
+			let articleId = mwConfGet('wgArticleId', -1);
+			if (title.startsWith('Ed')) {
+				title = title.replace(/^Ed[^]\S+ /, '');
+			} else if (articleId <= 0) {
+				title = title.replace(/^(Tworze|Creating)[^]\S+ /, '');
+				actionInd = '✨';
+			}
 		}
 		// special page with target
 		let nsNumber = mwConfGet('wgNamespaceNumber', false);
@@ -87,9 +93,10 @@
 		}
 		// current user
 		// test on: https://pl.wikipedia.org/wiki/Wikipedysta:Nux/vedit
+		// anti-test: https://pl.wikipedia.org/wiki/Szablon:Nux/test_Navbox/style.css
 		if (user && title.includes(user)) {
 			const escapedUser = escapeRegexp(user);
-			title = title.replace(new RegExp(`[a-z]:${escapedUser}/`), '~/');		
+			title = title.replace(new RegExp(`u:${escapedUser}/`), '~/');		
 		}
 		// finalize
 		if (title && title !== origTitle) {
