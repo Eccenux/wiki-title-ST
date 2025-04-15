@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Wiki-ST
 // @namespace    pl.enux.wiki
-// @version      2025-04-15
+// @version      2025-04-15.2
 // @description  Sprzątanie Tytułu. Usuwa m.in. dopisek po kresce z tytułów oraz skraca przestrzenie nazw.
 // @author       Nux
 // @match        https://pl.wikipedia.org/*
@@ -9,68 +9,94 @@
 // @match        https://pl.wikimedia.org/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=wikipedia.org
 // @grant        none
-// @run-at       document-idle
+// @run-at       document-body
 // @noframes
 // @updateURL    https://github.com/Eccenux/wiki-title-ST/raw/main/wiki-st.meta.js
 // @downloadURL  https://github.com/Eccenux/wiki-title-ST/raw/main/wiki-st.user.js
 // ==/UserScript==
 
-// Note! Using `document-idle` so that `mw.config.get` works.
+/*
+	Edit: https://github.dev/Eccenux/wiki-title-ST/
+	Repo: https://github.com/Eccenux/wiki-title-ST/
+*/
 
 /* global mw */
 (function() {
 	'use strict';
 	
-	const user = getUser();
+	const rawTitle = document.title;
+	
+	// quick, first render (mw.config.get will not work, but that's fine)
+	console.log('[ST] setup1');
+	setup(rawTitle);
 
-	const origTitle = document.title;
-	let title = origTitle;
-	// remove site title
-	title = title.replace(/(.+) (–|-) .+/, '$1');
-	// action indicator init
-	let actionInd = '';
-	if (location.search.includes('action=edit')) {
-		title = title.replace(/^Ed[^]\S+ /, '');
-		actionInd = '✏️';
-	}
-	// special page with target
-	let nsNumber = mwConfGet('wgNamespaceNumber', false);
-	if (nsNumber === -1) {
-		let userTarget = mwConfGet('wgRelevantUserName', false);
-		if (userTarget !== false) {
-			title = 's:' + mwConfGet('wgCanonicalSpecialPageName', 'nn') + '/' + userTarget;
+	// Note that `mw.config.get` works at window.load/`document-idle`, but that's also quite slow.
+	let testMw = (phase) => { console.log('[ST] testMw', JSON.stringify({phase, mw:typeof window.mw, user:getUser()})) };
+	let runAtMwReady = () => {
+		console.log('[ST] setup2');
+		setup(rawTitle);
+	};
+	window.addEventListener('load', () => {
+		testMw('load');
+		//requestIdleCallback(runAtMwReady);
+		runAtMwReady();
+	});
+	// document.addEventListener("DOMContentLoaded", (event) => {
+	// 	testMw('DOMContentLoaded');
+	// });
+	
+	function setup(title) {
+		const user = getUser();
+		const origTitle = title;
+		console.log('[ST] setup:', JSON.stringify({user, title}));
+		
+		// remove site title
+		title = title.replace(/(.+) (–|-) .+/, '$1');
+		// action indicator init
+		let actionInd = '';
+		if (location.search.includes('action=edit')) {
+			title = title.replace(/^Ed[^]\S+ /, '');
+			actionInd = '✏️';
+		}
+		// special page with target
+		let nsNumber = mwConfGet('wgNamespaceNumber', false);
+		if (nsNumber === -1) {
+			let userTarget = mwConfGet('wgRelevantUserName', false);
+			if (userTarget !== false) {
+				title = 's:' + mwConfGet('wgCanonicalSpecialPageName', 'nn') + '/' + userTarget;
+			}
+		}
+		// namespace
+		if (nsNumber !== -1 && title.includes(':')) {
+			title = title.replace(/([^ ].+?):/, (a, ns)=>{
+				let nsShort = shortNamespace(ns);
+				return (!nsShort) ? a : nsShort + ':';
+			});
+		}
+		// site lang if foreign
+		let siteIndicator = location.host.replace(/^(\w+)\..+/, '$1');
+		if (siteIndicator == 'pl') {
+			siteIndicator = '';
+		}
+		if (siteIndicator.length) {
+			title = siteIndicator + ': ' + title;
+		}
+		// action
+		if (actionInd.length) {
+			title = actionInd + ' ' + title;
+		}
+		// current user
+		// test on: https://pl.wikipedia.org/wiki/Wikipedysta:Nux/vedit
+		if (user && title.includes(user)) {
+			const escapedUser = escapeRegexp(user);
+			title = title.replace(new RegExp(`[a-z]:${escapedUser}/`), '~/');		
+		}
+		// finalize
+		if (title && title !== origTitle) {
+			document.title = title;
 		}
 	}
-	// namespace
-	if (nsNumber !== -1 && title.includes(':')) {
-		title = title.replace(/([^ ].+?):/, (a, ns)=>{
-			let nsShort = shortNamespace(ns);
-			return (!nsShort) ? a : nsShort + ':';
-		});
-	}
-	// site lang if foreign
-	let siteIndicator = location.host.replace(/^(\w+)\..+/, '$1');
-	if (siteIndicator == 'pl') {
-		siteIndicator = '';
-	}
-	if (siteIndicator.length) {
-		title = siteIndicator + ': ' + title;
-	}
-	// action
-	if (siteIndicator.length) {
-		title = actionInd + ' ' + title;
-	}
-	// current user
-	// test on: https://pl.wikipedia.org/wiki/Wikipedysta:Nux/vedit
-	if (user && title.includes(user)) {
-		const escapedUser = escapeRegexp(user);
-		title = title.replace(new RegExp(`[a-z]:${escapedUser}/`), '~/');		
-	}
-	// finalize
-	if (title && title !== origTitle) {
-		document.title = title;
-	}
-	
+
 	/** @return Safe `mw.config.get`. */
 	function mwConfGet(key, defVal = false) {
 		if (!window.mw) {
@@ -107,6 +133,8 @@
 			['tpl.t', ['Dyskusja szablonu', 'Template talk']],
 			['mod', ['Moduł', 'Module']],
 			['mod.t', ['Dyskusja modułu', 'Module talk']],
+			['prj', ['Wikiprojekt']],
+			['prj.t', ['Dyskusja wikiprojektu']],
 			['wp', ['Wikipedia']],
 			['wp.t', ['Dyskusja Wikipedii', 'Wikipedia talk']],
 			
