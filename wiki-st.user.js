@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         Wiki-ST
 // @namespace    pl.enux.wiki
-// @version      2025-04-15.3
+// @version      2025-04-27.1
 // @description  Sprzątanie Tytułu. Usuwa m.in. dopisek po kresce z tytułów oraz skraca przestrzenie nazw.
 // @author       Nux
 // @match        https://pl.wikipedia.org/*
+// @match        https://pl.m.wikipedia.org/*
 // @match        https://en.wikipedia.org/*
+// @match        https://en.m.wikipedia.org/*
 // @match        https://pl.wikimedia.org/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=wikipedia.org
 // @grant        none
@@ -23,9 +25,9 @@
 /* global mw */
 (function() {
 	'use strict';
-	
+
 	const rawTitle = document.title;
-	
+
 	// quick, first render (mw.config.get will not work, but that's fine)
 	console.log('[ST] setup1');
 	setup(rawTitle);
@@ -44,12 +46,12 @@
 	// document.addEventListener("DOMContentLoaded", (event) => {
 	// 	testMw('DOMContentLoaded');
 	// });
-	
+
 	function setup(title) {
 		const user = getUser();
 		const origTitle = title;
 		console.log('[ST] setup:', JSON.stringify({user, title}));
-		
+
 		// remove site title
 		title = title.replace(/(.+) (–|-) .+/, '$1');
 		// action indicator init
@@ -91,12 +93,20 @@
 		if (actionInd.length) {
 			title = actionInd + ' ' + title;
 		}
+		// mw:Gadget-
+		if (title.includes('mw') && title.includes(':Gadget-')) {
+			title = title.replace(/(mw(\.t)?)[:]Gadget-/, '$1.G:');
+		}
 		// current user
 		// test on: https://pl.wikipedia.org/wiki/Wikipedysta:Nux/vedit
 		// anti-test: https://pl.wikipedia.org/wiki/Szablon:Nux/test_Navbox/style.css
 		if (user && title.includes(user)) {
 			const escapedUser = escapeRegexp(user);
-			title = title.replace(new RegExp(`u:${escapedUser}/`), '~/');		
+			title = title.replace(new RegExp(`u:${escapedUser}/`), '~/');
+		}
+        // mobile
+		if (location.host.includes('.m.')) {
+			title = 'Ⓜ️' + title;
 		}
 		// finalize
 		if (title && title !== origTitle) {
@@ -123,7 +133,7 @@
 		const user = mwConfGet('wgUserName', false);
 		return user && user.length ? user : false;
 	}
-	
+
 	/** @return String safe-ish for RegExp. */
 	function escapeRegexp(string) {
 		return string.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -142,9 +152,11 @@
 			['mod.t', ['Dyskusja modułu', 'Module talk']],
 			['prj', ['Wikiprojekt']],
 			['prj.t', ['Dyskusja wikiprojektu']],
+			['mw', ['MediaWiki']],
+			['mw.t', ['Dyskusja MediaWiki', 'MediaWiki talk']],
 			['wp', ['Wikipedia']],
 			['wp.t', ['Dyskusja Wikipedii', 'Wikipedia talk']],
-			
+
 			//['spc', ['Specjalna', 'Special']],
 		]);
 		for (const [nsShort, arr] of nsShorts) {
@@ -153,5 +165,5 @@
 			}
 		}
 		return false;
-	}		
+	}
 })();
