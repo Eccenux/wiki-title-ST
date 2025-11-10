@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Wiki-ST
 // @namespace    pl.enux.wiki
-// @version      2025-04-27.1
+// @version      2025-11-10.1
 // @description  Sprzątanie Tytułu. Usuwa m.in. dopisek po kresce z tytułów oraz skraca przestrzenie nazw.
 // @author       Nux
 // @match        https://pl.wikipedia.org/*

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Wiki-ST
 // @namespace    pl.enux.wiki
-// @version      2025-04-27.1
+// @version      2025-11-10.1
 // @description  Sprzątanie Tytułu. Usuwa m.in. dopisek po kresce z tytułów oraz skraca przestrzenie nazw.
 // @author       Nux
 // @match        https://pl.wikipedia.org/*
@@ -27,30 +27,31 @@
 	'use strict';
 
 	const rawTitle = document.title;
+	const debug = false;
 
 	// quick, first render (mw.config.get will not work, but that's fine)
-	console.log('[ST] setup1');
+	if (debug) console.log('[ST] setup1');
 	setup(rawTitle);
 
 	// Note that `mw.config.get` works at window.load/`document-idle`, but that's also quite slow.
 	let testMw = (phase) => { console.log('[ST] testMw', JSON.stringify({phase, mw:typeof window.mw, user:getUser()})) };
 	let runAtMwReady = () => {
-		console.log('[ST] setup2');
+		if (debug) console.log('[ST] setup2');
 		setup(rawTitle);
 	};
 	window.addEventListener('load', () => {
-		testMw('load');
+		if (debug) testMw('load');
 		//requestIdleCallback(runAtMwReady);
 		runAtMwReady();
 	});
 	// document.addEventListener("DOMContentLoaded", (event) => {
-	// 	testMw('DOMContentLoaded');
+	// 	if (debug) testMw('DOMContentLoaded');
 	// });
 
 	function setup(title) {
 		const user = getUser();
 		const origTitle = title;
-		console.log('[ST] setup:', JSON.stringify({user, title}));
+		if (debug) console.log('[ST] setup:', JSON.stringify({user, title}));
 
 		// remove site title
 		title = title.replace(/(.+) (–|-) .+/, '$1');
